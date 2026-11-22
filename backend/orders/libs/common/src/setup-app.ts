@@ -11,7 +11,7 @@ export interface SetupAppOptions {
 /** Configuration commune à tous les services (gateway, users, orders, payments). */
 export function setupApp(app: INestApplication, options: SetupAppOptions): void {
   app.use(traceIdMiddleware);
-  app.setGlobalPrefix('api/v1');
+  app.setGlobalPrefix('api');
 
   app.useGlobalPipes(
     new ValidationPipe({
@@ -28,7 +28,15 @@ export function setupApp(app: INestApplication, options: SetupAppOptions): void 
     .filter(Boolean);
   app.enableCors({
     origin: origins,
-    allowedHeaders: ['Content-Type', 'traceparent', 'tracestate'],
+    allowedHeaders: [
+      'Content-Type',
+      'traceparent',
+      'tracestate',
+      'X-Trace-Id',
+      'X-Chaos-Delay-Ms',
+      'X-Chaos-Force-Error',
+      'X-Chaos-Drop-Payment',
+    ],
     exposedHeaders: ['X-Trace-Id'],
   });
 
