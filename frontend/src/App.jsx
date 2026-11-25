@@ -1,9 +1,9 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import Navbar from './components/Navbar.jsx'
 import OrdersView from './components/OrdersView.jsx'
 import TracesView from './components/TracesView.jsx'
 import BenchmarkView from './components/BenchmarkView.jsx'
-import { executeOrderFlow } from './services/apiClient.js'
+import { executeOrderFlow, fetchOrdersHistory } from './services/apiClient.js'
 
 const INITIAL_USERS = [
   { id: 'USR-101', name: 'Amadou Diallo' },
@@ -14,12 +14,17 @@ const INITIAL_USERS = [
 export default function App() {
   const [activeTab, setActiveTab] = useState('orders')
   const [activeStack, setActiveStack] = useState('ELK')
-  const [simulationMode, setSimulationMode] = useState(true)
 
   const [users, setUsers] = useState(INITIAL_USERS)
   const [selectedUser, setSelectedUser] = useState(INITIAL_USERS[0])
   const [history, setHistory] = useState([])
   const [isLoading, setIsLoading] = useState(false)
+
+  useEffect(() => {
+    fetchOrdersHistory().then((orders) => {
+      if (orders.length > 0) setHistory(orders)
+    })
+  }, [])
 
   const handleAddUser = (newUser) => {
     setUsers((prev) => [...prev, newUser])
@@ -31,7 +36,6 @@ export default function App() {
     const result = await executeOrderFlow({
       user: selectedUser,
       ...payload,
-      simulationMode,
     })
     setHistory((prev) => [result, ...prev])
     setIsLoading(false)
@@ -47,14 +51,12 @@ export default function App() {
           ...payload.scenarioConfig,
           id: `ST05 · ${payload.scenarioConfig.id}`,
         },
-        simulationMode,
       })
       setHistory((prev) => [result, ...prev])
     }
     setIsLoading(false)
   }
 
-  // Métriques globales légères (EF04)
   const total = history.length
   const errors = history.filter((h) => !h.success).length
   const errorRate = total ? Math.round((errors / total) * 100) : 0
@@ -69,13 +71,10 @@ export default function App() {
         setActiveTab={setActiveTab}
         activeStack={activeStack}
         setActiveStack={setActiveStack}
-        simulationMode={simulationMode}
-        setSimulationMode={setSimulationMode}
         traceCount={total}
       />
 
       <main className="max-w-5xl w-full mx-auto px-4 sm:px-6 py-8 space-y-8 flex-1">
-        {/* 3 indicateurs clés épurés */}
         <div className="grid grid-cols-3 gap-4">
           <div className="bg-white rounded-2xl border border-slate-200 px-5 py-4 shadow-sm">
             <span className="text-xs text-slate-500">Requêtes totales</span>
@@ -93,7 +92,6 @@ export default function App() {
           </div>
         </div>
 
-        {/* Vue active */}
         {activeTab === 'orders' && (
           <OrdersView
             users={users}
