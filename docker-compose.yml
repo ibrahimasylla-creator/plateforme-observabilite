@@ -1,3 +1,16 @@
+x-backend-common: &backend-common
+  build:
+    context: ./backend/orders
+    dockerfile: Dockerfile
+  restart: unless-stopped
+  networks:
+    - obs-net
+  deploy:
+    resources:
+      limits:
+        cpus: "0.50"
+        memory: 512M
+
 services:
   postgres:
     image: postgres:16-alpine
@@ -15,6 +28,106 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+    networks:
+      - obs-net
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 512M
+
+  migrate:
+    build:
+      context: ./backend/orders
+      dockerfile: Dockerfile
+    container_name: obs-migrate
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+    command: ["npx", "prisma", "migrate", "deploy"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - obs-net
+    restart: "no"
+
+  users:
+    <<: *backend-common
+    container_name: obs-users
+    environment:
+      APP_NAME: users
+      PORT: 4001
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+    ports:
+      - "4001:4001"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  payments:
+    <<: *backend-common
+    container_name: obs-payments
+    environment:
+      APP_NAME: payments
+      PORT: 4003
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+    ports:
+      - "4003:4003"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  orders:
+    <<: *backend-common
+    container_name: obs-orders
+    environment:
+      APP_NAME: orders
+      PORT: 4002
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+      USERS_URL: http://users:4001
+      PAYMENTS_URL: http://payments:4003
+    ports:
+      - "4002:4002"
+    depends_on:
+      users:
+        condition: service_started
+      payments:
+        condition: service_started
+
+  gateway:
+    <<: *backend-common
+    container_name: obs-gateway
+    environment:
+      APP_NAME: gateway
+      PORT: 4000
+      ORDERS_URL: http://orders:4002
+    ports:
+      - "4000:4000"
+    depends_on:
+      orders:
+        condition: service_started
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: obs-frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      gateway:
+        condition: service_started
+    networks:
+      - obs-net
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 256M
 
 volumes:
   pgdata:
+
+networks:
+  obs-net:
+    driver: bridge
