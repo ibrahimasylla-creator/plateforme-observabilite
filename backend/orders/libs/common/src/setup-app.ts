@@ -1,6 +1,8 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AllExceptionsFilter } from './all-exceptions.filter';
+import { httpJsonLoggerMiddleware, JsonNestLogger } from './json-logger';
+import { metricsMiddleware } from './metrics.middleware';
 import { traceIdMiddleware } from './trace-id.middleware';
 
 export interface SetupAppOptions {
@@ -8,9 +10,11 @@ export interface SetupAppOptions {
   description: string;
 }
 
-/** Configuration commune à tous les services (gateway, users, orders, payments). */
 export function setupApp(app: INestApplication, options: SetupAppOptions): void {
+  app.useLogger(new JsonNestLogger());
   app.use(traceIdMiddleware);
+  app.use(metricsMiddleware);
+  app.use(httpJsonLoggerMiddleware);
   app.setGlobalPrefix('api');
 
   app.useGlobalPipes(

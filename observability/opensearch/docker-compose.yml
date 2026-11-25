@@ -1,0 +1,67 @@
+services:
+  opensearch:
+    image: opensearchproject/opensearch:2.17.1
+    container_name: obs-opensearch
+    environment:
+      discovery.type: single-node
+      DISABLE_SECURITY_PLUGIN: "true"
+      OPENSEARCH_JAVA_OPTS: "-Xms768m -Xmx768m"
+    ports:
+      - "9201:9200"
+    volumes:
+      - osdata:/usr/share/opensearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9200 >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+    networks:
+      - plateforme-observabilite_obs-net
+    deploy:
+      resources:
+        limits:
+          cpus: "1.50"
+          memory: 1536M
+
+  opensearch-dashboards:
+    image: opensearchproject/opensearch-dashboards:2.17.1
+    container_name: obs-opensearch-dashboards
+    environment:
+      OPENSEARCH_HOSTS: '["http://opensearch:9200"]'
+      DISABLE_SECURITY_DASHBOARDS_PLUGIN: "true"
+    ports:
+      - "5602:5601"
+    depends_on:
+      opensearch:
+        condition: service_healthy
+    networks:
+      - plateforme-observabilite_obs-net
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 512M
+
+  fluent-bit:
+    image: fluent/fluent-bit:3.1.9
+    container_name: obs-fluent-bit
+    volumes:
+      - ./fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    depends_on:
+      opensearch:
+        condition: service_healthy
+    networks:
+      - plateforme-observabilite_obs-net
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 256M
+
+volumes:
+  osdata:
+
+networks:
+  plateforme-observabilite_obs-net:
+    external: true

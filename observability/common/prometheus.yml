@@ -1,0 +1,17 @@
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+
+scrape_configs:
+  - job_name: 'gateway'
+    static_configs:
+      - targets: ['gateway:4000']
+  - job_name: 'users'
+    static_configs:
+      - targets: ['users:4001']
+  - job_name: 'orders'
+    static_configs:
+      - targets: ['orders:4002']
+  - job_name: 'payments'
+    static_configs:
+      - targets: ['payments:4003']

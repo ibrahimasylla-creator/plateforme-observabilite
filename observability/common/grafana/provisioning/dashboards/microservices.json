@@ -1,0 +1,58 @@
+{
+  "title": "Plateforme Observabilité - Microservices",
+  "uid": "obs-microservices",
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "5s",
+  "panels": [
+    {
+      "id": 1,
+      "title": "Débit HTTP par service (req/s)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum(rate(http_requests_total[1m])) by (service)",
+          "legendFormat": "{{service}}"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Taux d'erreurs HTTP (4xx / 5xx)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum(rate(http_requests_total{status_code=~\"4..|5..\"}[1m])) by (service, status_code)",
+          "legendFormat": "{{service}} ({{status_code}})"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Latence P95 par service (secondes)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[1m])) by (le, service))",
+          "legendFormat": "p95 {{service}}"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Mémoire RSS des services (Mo)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "targets": [
+        {
+          "expr": "process_resident_memory_bytes / 1024 / 1024",
+          "legendFormat": "{{service}}"
+        }
+      ]
+    }
+  ]
+}

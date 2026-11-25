@@ -1,12 +1,15 @@
+import { initTelemetry } from '@app/common';
+initTelemetry('payments');
+
 import { NestFactory } from '@nestjs/core';
-import { setupApp } from '@app/common';
+import { JsonNestLogger, setupApp } from '@app/common';
 import { PaymentsModule } from './payments.module';
 
 async function bootstrap() {
-  const app = await NestFactory.create(PaymentsModule);
+  const app = await NestFactory.create(PaymentsModule, { logger: new JsonNestLogger() });
   setupApp(app, {
     title: 'Service Paiements',
-    description: 'Paiement simulé : aucune transaction réelle',
+    description: 'Traitement des paiements simulés et injection de pannes',
   });
   await app.listen(process.env.PORT ?? 4003);
 }

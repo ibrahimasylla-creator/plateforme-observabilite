@@ -1,9 +1,12 @@
+import { initTelemetry } from '@app/common';
+initTelemetry('orders');
+
 import { NestFactory } from '@nestjs/core';
-import { setupApp } from '@app/common';
+import { JsonNestLogger, setupApp } from '@app/common';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { logger: new JsonNestLogger() });
   setupApp(app, {
     title: 'Service Commandes',
     description: 'Création et suivi des commandes',

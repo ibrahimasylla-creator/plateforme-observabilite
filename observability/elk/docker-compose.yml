@@ -1,0 +1,69 @@
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.15.3
+    container_name: obs-elasticsearch
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      ES_JAVA_OPTS: "-Xms768m -Xmx768m"
+    ports:
+      - "9200:9200"
+    volumes:
+      - esdata:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9200 >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+    networks:
+      - plateforme-observabilite_obs-net
+    deploy:
+      resources:
+        limits:
+          cpus: "1.50"
+          memory: 1536M
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.15.3
+    container_name: obs-kibana
+    environment:
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    networks:
+      - plateforme-observabilite_obs-net
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 768M
+
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:8.15.3
+    container_name: obs-filebeat
+    user: root
+    command: ["--strict.perms=false", "-e", "-c", "/usr/share/filebeat/filebeat.yml"]
+    volumes:
+      - ./filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    networks:
+      - plateforme-observabilite_obs-net
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 256M
+
+volumes:
+  esdata:
+
+networks:
+  plateforme-observabilite_obs-net:
+    external: true
