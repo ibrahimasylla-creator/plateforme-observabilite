@@ -136,3 +136,30 @@ export async function executeOrderFlow({
     }
   })
 }
+
+export async function fetchUsers() {
+  try {
+    const response = await fetch(`${GATEWAY_URL}/api/users`)
+    if (!response.ok) return []
+    const users = await response.json()
+    return Array.isArray(users) ? users : []
+  } catch {
+    return []
+  }
+}
+
+export async function createUser({ id, name, email }) {
+  const response = await fetch(`${GATEWAY_URL}/api/users`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      id: id || `USR-${Math.floor(100 + Math.random() * 900)}`,
+      name,
+      email: email || `${name.toLowerCase().replace(/[^a-z0-9]/g, '.')}@observability.local`,
+    }),
+  })
+  if (!response.ok) {
+    throw new Error(`Erreur création utilisateur (${response.status})`)
+  }
+  return await response.json()
+}

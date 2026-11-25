@@ -3,20 +3,14 @@ import Navbar from './components/Navbar.jsx'
 import OrdersView from './components/OrdersView.jsx'
 import TracesView from './components/TracesView.jsx'
 import BenchmarkView from './components/BenchmarkView.jsx'
-import { executeOrderFlow, fetchOrdersHistory } from './services/apiClient.js'
-
-const INITIAL_USERS = [
-  { id: 'USR-101', name: 'Amadou Diallo' },
-  { id: 'USR-102', name: 'Fatou Sow' },
-  { id: 'USR-103', name: 'Moussa Fall' },
-]
+import { executeOrderFlow, fetchOrdersHistory, fetchUsers, createUser } from './services/apiClient.js'
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('orders')
   const [activeStack, setActiveStack] = useState('ELK')
 
-  const [users, setUsers] = useState(INITIAL_USERS)
-  const [selectedUser, setSelectedUser] = useState(INITIAL_USERS[0])
+  const [users, setUsers] = useState([])
+  const [selectedUser, setSelectedUser] = useState(null)
   const [history, setHistory] = useState([])
   const [isLoading, setIsLoading] = useState(false)
 
@@ -24,14 +18,27 @@ export default function App() {
     fetchOrdersHistory().then((orders) => {
       if (orders.length > 0) setHistory(orders)
     })
+    fetchUsers().then((dbUsers) => {
+      if (dbUsers.length > 0) {
+        setUsers(dbUsers)
+        setSelectedUser(dbUsers[0])
+      }
+    })
   }, [])
 
-  const handleAddUser = (newUser) => {
-    setUsers((prev) => [...prev, newUser])
-    setSelectedUser(newUser)
+  const handleAddUser = async (newUser) => {
+    try {
+      const savedUser = await createUser(newUser)
+      setUsers((prev) => [...prev, savedUser])
+      setSelectedUser(savedUser)
+    } catch {
+      setUsers((prev) => [...prev, newUser])
+      setSelectedUser(newUser)
+    }
   }
 
   const handleSendOrder = async (payload) => {
+    if (!selectedUser) return
     setIsLoading(true)
     const result = await executeOrderFlow({
       user: selectedUser,
@@ -42,6 +49,7 @@ export default function App() {
   }
 
   const handleRunBatch = async (count, payload) => {
+    if (!selectedUser) return
     setIsLoading(true)
     for (let i = 0; i < count; i++) {
       const result = await executeOrderFlow({

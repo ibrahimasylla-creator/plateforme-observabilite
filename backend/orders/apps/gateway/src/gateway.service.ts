@@ -11,8 +11,8 @@ const GATEWAY_TIMEOUT_MS = 30_000;
 @Injectable()
 export class GatewayService {
   private readonly ordersUrl = process.env.ORDERS_URL ?? 'http://localhost:4002';
+  private readonly usersUrl = process.env.USERS_URL ?? 'http://localhost:4001';
 
-  /** Transmet une requête au service orders, en gardant la même trace. */
   forwardToOrders(
     method: string,
     path: string,
@@ -31,6 +31,18 @@ export class GatewayService {
       service: 'orders',
       method,
       url: `${this.ordersUrl}/api/orders${path}${qs ? `?${qs}` : ''}`,
+      traceId: ctx.traceId,
+      body,
+      headers: ctx.chaos,
+      timeoutMs: GATEWAY_TIMEOUT_MS,
+    });
+  }
+
+  forwardToUsers(method: string, path: string, ctx: ForwardContext, body?: unknown) {
+    return callService({
+      service: 'users',
+      method,
+      url: `${this.usersUrl}/api/users${path}`,
       traceId: ctx.traceId,
       body,
       headers: ctx.chaos,
