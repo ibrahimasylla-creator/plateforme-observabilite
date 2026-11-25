@@ -5,12 +5,14 @@ import TracesView from './components/TracesView.jsx'
 import BenchmarkView from './components/BenchmarkView.jsx'
 import { executeOrderFlow, fetchOrdersHistory, fetchUsers, createUser } from './services/apiClient.js'
 
+const PLACEHOLDER_USER = { id: '', name: 'Chargement des clients...' }
+
 export default function App() {
   const [activeTab, setActiveTab] = useState('orders')
   const [activeStack, setActiveStack] = useState('ELK')
 
   const [users, setUsers] = useState([])
-  const [selectedUser, setSelectedUser] = useState(null)
+  const [selectedUser, setSelectedUser] = useState(PLACEHOLDER_USER)
   const [history, setHistory] = useState([])
   const [isLoading, setIsLoading] = useState(false)
 
@@ -22,23 +24,20 @@ export default function App() {
       if (dbUsers.length > 0) {
         setUsers(dbUsers)
         setSelectedUser(dbUsers[0])
+      } else {
+        setSelectedUser({ id: '', name: 'Aucun client en base (créez-en un)' })
       }
     })
   }, [])
 
   const handleAddUser = async (newUser) => {
-    try {
-      const savedUser = await createUser(newUser)
-      setUsers((prev) => [...prev, savedUser])
-      setSelectedUser(savedUser)
-    } catch {
-      setUsers((prev) => [...prev, newUser])
-      setSelectedUser(newUser)
-    }
+    const savedUser = await createUser(newUser)
+    setUsers((prev) => [...prev, savedUser])
+    setSelectedUser(savedUser)
   }
 
   const handleSendOrder = async (payload) => {
-    if (!selectedUser) return
+    if (!selectedUser?.id) return
     setIsLoading(true)
     const result = await executeOrderFlow({
       user: selectedUser,
@@ -49,7 +48,7 @@ export default function App() {
   }
 
   const handleRunBatch = async (count, payload) => {
-    if (!selectedUser) return
+    if (!selectedUser?.id) return
     setIsLoading(true)
     for (let i = 0; i < count; i++) {
       const result = await executeOrderFlow({
