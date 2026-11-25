@@ -110,6 +110,7 @@ services:
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
       PORT: 4000
       ORDERS_URL: http://orders:4002
+      USERS_URL: http://users:4001
     ports:
       - "4000:4000"
     depends_on:

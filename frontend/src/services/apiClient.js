@@ -148,14 +148,14 @@ export async function fetchUsers() {
   }
 }
 
-export async function createUser({ id, name, email }) {
+export async function createUser({ name, email }) {
+  const slug = name.toLowerCase().replace(/[^a-z0-9]/g, '.').replace(/\.+ /g, '.')
   const response = await fetch(`${GATEWAY_URL}/api/users`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      id: id || `USR-${Math.floor(100 + Math.random() * 900)}`,
       name,
-      email: email || `${name.toLowerCase().replace(/[^a-z0-9]/g, '.')}@observability.local`,
+      email: email || `${slug}.${Math.floor(100 + Math.random() * 900)}@observability.local`,
     }),
   })
   if (!response.ok) {
