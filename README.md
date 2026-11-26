@@ -1,115 +1,35 @@
-# Plateforme d'observabilité : ELK vs OpenSearch + Prometheus + OpenTelemetry
+# Plateforme d'Observabilite Distribuee - ELK vs OpenSearch
 
-Projet web avancé (Master 1 SI/SR, UADB), binôme : Ibrahima Sylla / Abdoulaye Dieye.
+> **Projet Web Avance - Master 1 SI / SR (UADB)**
+> **Binome :** Ibrahima Sylla & Abdoulaye Dieye
 
-Ce projet met en place une application distribuée de gestion de commandes, puis la supervise
-avec deux architectures d'observabilité comparées dans les mêmes conditions :
-logs (ELK ou OpenSearch), métriques (Prometheus + Grafana) et traces distribuées (OpenTelemetry).
-Le cahier des charges complet est fourni séparément.
+Application microservices de gestion de commandes instrumentee de bout en bout (logs, metriques, traces W3C) comparant **Suite ELK** et **OpenSearch**, couplees a **Prometheus**, **Grafana** et **Jaeger**.
 
-## Architecture applicative
+## 1. Architecture
 
-Client / Frontend -> gateway -> orders -> users ou payments (paiement simulé) -> PostgreSQL
+Frontend (:5173) -> Gateway (:4000) -> Orders (:4002) / Users (:4001) / Payments (:4003) -> PostgreSQL (:5433)
+- Traces : OTel Collector -> Jaeger (:16686)
+- Metriques : Prometheus (:9095) -> Grafana (:3000)
+- Logs : Filebeat / Collector -> ELK (:5601) | OpenSearch (:5602)
 
-Backend : NestJS (monorepo), Prisma 7.10.1, PostgreSQL 16.
+## 2. Stack Technique & Structure
 
-## État d'avancement
+- **Backend** : Node.js 20+, NestJS Monorepo (`backend/orders/`), Prisma 7.10.1, PostgreSQL 16
+- **Frontend** : React 18, Vite, Tailwind CSS (`frontend/`)
+- **Observabilite** : `observability/common/`, `observability/elk/`, `observability/opensearch/`
+- **Tests & Scripts** : `load-tests/benchmark.js` (k6), `scripts/dev-up.sh`, `scripts/dev-down.sh`
 
-| Élément | État |
-|---|---|
-| Base PostgreSQL (Docker Compose) | fait |
-| Schéma Prisma (users, orders, payments) + migration | fait |
-| Bibliothèque partagée `libs/database` | fait |
-| Service `orders` : route /health | fait |
-| Services gateway, users, payments | à faire |
-| Swagger, validation, format d'erreur unique | à faire |
-| Logs JSON, métriques /metrics, traces OpenTelemetry | à faire |
-| Piles ELK et OpenSearch, Prometheus, Grafana | à faire |
-| Frontend | en cours (autre membre du binôme) |
-
-## Prérequis
-
-- Git
-- Node.js 20 ou plus (testé avec 24) et npm
-- Docker et Docker Compose
-
-## Démarrage depuis zéro
+## 3. Demarrage Rapide
 
 ```bash
-# 1. Récupérer le projet
-git clone https://github.com/ibrahimasylla-creator/plateforme-observabilite.git
-cd plateforme-observabilite
-git checkout develop
+cp .env.example .env && cp backend/orders/.env.example backend/orders/.env
+docker compose up -d --build
+docker compose -f observability/common/docker-compose.yml up -d
+docker compose -f observability/opensearch/docker-compose.yml up -d ```
 
-# 2. Configurer et lancer la base de données
-cp .env.example .env
-nano .env                      # choisir un mot de passe dans POSTGRES_PASSWORD
-docker compose up -d
-docker compose ps              # attendre le statut "healthy"
+## 4. Ports & Scenarios (ST01-ST05)
 
-# 3. Configurer le backend
-cd backend/orders
-cp .env.example .env
-nano .env                      # mettre le MÊME mot de passe dans DATABASE_URL
-
-# 4. Installer, générer le client Prisma, créer les tables
-npm install
-npm run db:generate
-npm run db:deploy
-
-# 5. Lancer le service orders
-npm run start:dev orders
-```
-
-Vérification (dans un autre terminal) :
-
-```bash
-curl http://localhost:4002/health
-# {"status":"ok","service":"orders","database":"up"}
-```
-
-## Configuration : deux fichiers .env distincts
-
-| Fichier | Lu par | Contenu |
-|---|---|---|
-| `.env` (racine) | Docker Compose | POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB, POSTGRES_PORT |
-| `backend/orders/.env` | Prisma et NestJS | DATABASE_URL |
-
-Les fichiers `.env` ne sont jamais publiés (voir `.gitignore`). Les modèles `.env.example`
-contiennent des valeurs fictives. Le mot de passe doit être identique dans les deux fichiers.
-Le dossier `generated/` (client Prisma) n'est pas versionné : il se recrée avec `npm run db:generate`.
-
-## Ports
-
-| Service | Port |
-|---|---|
-| PostgreSQL (limité à 127.0.0.1) | 5433 |
-| gateway | 4000 (prévu) |
-| users | 4001 (prévu) |
-| orders | 4002 |
-| payments | 4003 (prévu) |
-
-## Commandes utiles (dans backend/orders)
-
-| Commande | Rôle |
-|---|---|
-| `npm run start:dev <service>` | lancer un service (gateway, users, orders, payments) |
-| `npm run db:generate` | générer le client Prisma |
-| `npm run db:migrate` | créer et appliquer une migration (développement) |
-| `npm run db:deploy` | appliquer les migrations existantes |
-| `npx prisma studio` | parcourir les données |
-
-## Structure du dépôt
-
-```
-backend/orders/   monorepo NestJS (apps/ : gateway, orders, users, payments ; libs/database)
-frontend/         interface web
-observability/    configurations ELK, OpenSearch et éléments communs (Prometheus, OpenTelemetry)
-load-tests/       scripts de génération de charge
-docs/             documentation et contrat d'API
-```
-
-## Workflow Git
-
-Branches : `main` (stable), `develop` (intégration), `feature/...` (une par tâche).
-Les fusions vers `develop` se font par Pull Request.
+- **UI** : `http://localhost:5173` | **API Gateway** : `http://localhost:4000/api`
+- **Jaeger** : `http://localhost:16686` | **Prometheus** : `http://localhost:9095` | **Grafana** : `http://localhost:3000`
+- **OpenSearch** : `http://localhost:5602` | **Kibana (ELK)** : `http://localhost:5601`
+- **Scenarios** : `ST01` Nominal (201) · `ST02` Erreur 500 · `ST03` Lenteur (+2s) · `ST04` Service coupe (503) · `ST05` Charge k6
